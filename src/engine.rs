@@ -2,23 +2,26 @@ use skiplist::ordered_skiplist::OrderedSkipList;
 use std::mem;
 
 use crate::log::Log;
+use crate::writer::Writer;
 
 pub struct Engine {
     size: u64,
     size_limit: u64,
     memtable: OrderedSkipList<Log>,
+    writer: Writer,
 }
 
 impl Engine {
-    pub fn new(size_limit: u64) -> Engine {
+    pub fn new(size_limit: u64, writer: Writer) -> Engine {
         Engine {
             size: 0,
-            size_limit: size_limit,
+            size_limit,
             memtable: OrderedSkipList::new(),
+            writer,
         }
     }
 
-    pub fn insert(&mut self, log: Log) {
+    pub fn insert(&mut self, log: Log) -> Result<(), String> {
         self.size += log.size();
         self.memtable.insert(log);
 
@@ -26,9 +29,11 @@ impl Engine {
             let mut memtable = OrderedSkipList::new();
 
             mem::swap(&mut self.memtable, &mut memtable);
-            for log in memtable {
-                println!("{:?}", log);
-            }
+            self.writer
+                .write(memtable)
+                .map_err(|e| format!("write memtable to disk failed {}", e))?;
         }
+
+        Ok(())
     }
 }

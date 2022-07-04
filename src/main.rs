@@ -1,14 +1,17 @@
 mod engine;
 mod log;
+mod writer;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{thread, time::Duration};
 
 use engine::Engine;
 use log::Log;
+use writer::Writer;
 
 fn main() {
-    let mut engine = Engine::new(120);
+    let writer = Writer::new().expect("create writer failed");
+    let mut engine = Engine::new(120, writer);
 
     for i in 0..4 {
         let current_time = SystemTime::now()
@@ -22,6 +25,6 @@ fn main() {
             request: String::from("GET /api HTTP/1.1"),
         };
 
-        engine.insert(log);
+        engine.insert(log).expect("insert log failed");
     }
 }
