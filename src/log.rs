@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::cmp::{Ord, Ordering};
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct Log {
     pub timestamp: u128,
     pub ip: [u8; 4],
