@@ -1,18 +1,18 @@
 use skiplist::ordered_skiplist::OrderedSkipList;
 use std::mem;
 
+use crate::fswriter::FsWriter;
 use crate::log::Log;
-use crate::writer::Writer;
 
 pub struct Engine {
     size: u64,
     size_limit: u64,
     memtable: OrderedSkipList<Log>,
-    writer: Writer,
+    writer: FsWriter,
 }
 
 impl Engine {
-    pub fn new(size_limit: u64, writer: Writer) -> Engine {
+    pub fn new(size_limit: u64, writer: FsWriter) -> Engine {
         Engine {
             size: 0,
             size_limit,

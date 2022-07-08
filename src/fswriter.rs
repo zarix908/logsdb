@@ -6,12 +6,12 @@ use std::vec::Vec;
 
 use crate::log::Log;
 
-pub struct Writer {
+pub struct FsWriter {
     files: Vec<File>,
 }
 
-impl Writer {
-    pub fn new() -> Result<Writer, String> {
+impl FsWriter {
+    pub fn new() -> Result<FsWriter, String> {
         let mut files = Vec::new();
 
         for i in 0..3 {
@@ -25,7 +25,7 @@ impl Writer {
             files.push(file);
         }
 
-        Ok(Writer { files })
+        Ok(FsWriter { files })
     }
 
     pub fn write(&mut self, memtable: OrderedSkipList<Log>) -> Result<(), String> {

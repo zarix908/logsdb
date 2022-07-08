@@ -1,6 +1,6 @@
 mod engine;
+mod fswriter;
 mod log;
-mod writer;
 
 use ::log::error;
 use actix_web::{error, post, web, App, HttpResponse, HttpServer, Responder};
@@ -9,14 +9,14 @@ use std::thread;
 
 use crate::log::Log;
 use engine::Engine;
-use writer::Writer;
+use fswriter::FsWriter;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let (sender, receiver) = sync_channel::<Log>(100);
 
     let handle = thread::spawn(move || {
-        let writer = Writer::new().expect("create writer failed");
+        let writer = FsWriter::new().expect("create writer failed");
         let mut engine = Engine::new(120, writer);
 
         for log in receiver {
