@@ -5,6 +5,7 @@ use std::io::Write;
 use std::vec::Vec;
 
 use crate::log::Log;
+use crate::writer::Writer;
 
 pub struct FsWriter {
     files: Vec<File>,
@@ -27,8 +28,10 @@ impl FsWriter {
 
         Ok(FsWriter { files })
     }
+}
 
-    pub fn write(&mut self, memtable: OrderedSkipList<Log>) -> Result<(), String> {
+impl Writer for FsWriter {
+    fn write(&mut self, memtable: OrderedSkipList<Log>) -> Result<(), String> {
         for log in memtable {
             self.files[0]
                 .write_all(&log.timestamp.to_le_bytes()[..])

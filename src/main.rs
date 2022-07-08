@@ -1,6 +1,7 @@
 mod engine;
 mod fswriter;
 mod log;
+mod writer;
 
 use ::log::error;
 use actix_web::{error, post, web, App, HttpResponse, HttpServer, Responder};
