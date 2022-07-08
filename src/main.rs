@@ -2,8 +2,8 @@ mod engine;
 mod log;
 mod writer;
 
-use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
-use crossbeam_queue::ArrayQueue;
+use actix_web::{post, web, App, HttpResponse, HttpServer, Responder, error};
+use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{thread, time::Duration};
 
@@ -13,9 +13,10 @@ use writer::Writer;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let queue = web::Data::new(ArrayQueue::<Log>::new(100));
+    let (sender, receiver) = sync_channel::<Log>(100);
+    let senderData = web::Data::new(sender);
 
-    HttpServer::new(move || App::new().app_data(queue.clone()).service(insert))
+    HttpServer::new(move || App::new().app_data(senderData.clone()).service(insert))
         .bind(("127.0.0.1", 8080))?
         .run()
         .await
@@ -40,7 +41,15 @@ async fn main() -> std::io::Result<()> {
 }
 
 #[post("/insert")]
-async fn insert(log: web::Json<Log>, queue: web::Data<ArrayQueue<Log>>) -> impl Responder {
-    queue.force_push(log.0);
-    HttpResponse::Ok()
+async fn insert(log: web::Json<Log>, sender: web::Data<SyncSender<Log>>) -> Result<impl Responder, error::Error> {
+    let err = sender.try_send(log.0).err();
+
+    if let Some(send_err) = err {
+        return match send_err {
+            TrySendError::Full(_) => Err(error::ErrorInternalServerError("insertion queue is full")),
+            TrySendError::Disconnected(_) => Err(error::ErrorInternalServerError("internal error"))
+        };
+    }
+
+    Ok(HttpResponse::Ok())
 }
