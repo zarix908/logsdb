@@ -1,6 +1,7 @@
 mod engine;
 mod fswriter;
 mod log;
+mod rle;
 mod writer;
 
 use ::log::error;
