@@ -15,8 +15,13 @@ impl FsWriter {
     pub fn new() -> Result<FsWriter, String> {
         let mut files = Vec::new();
 
-        for i in 0..3 {
-            let filename = format!("./data/column{}.cln", i);
+        for i in 0..4 {
+            let filename = if i < 3 {
+                format!("./data/column{}.cln", i)
+            } else {
+                String::from("./data/column2.blk")
+            };
+
             let file = OpenOptions::new()
                 .create(true)
                 .write(true)
@@ -32,6 +37,8 @@ impl FsWriter {
 
 impl Writer for FsWriter {
     fn write(&mut self, memtable: OrderedSkipList<Log>) -> Result<(), String> {
+        let mut offset = 0u64;
+
         for log in memtable {
             self.files[0]
                 .write_all(&log.timestamp.to_le_bytes()[..])
@@ -41,11 +48,13 @@ impl Writer for FsWriter {
                 .write_all(&log.ip[..])
                 .map_err(|e| format!("write ip failed: {}", e))?;
 
-            let mut bytes = log.request.as_bytes().to_vec();
-            bytes.push(0);
             self.files[2]
-                .write_all(&bytes.as_slice())
+                .write_all(&log.request.as_bytes())
                 .map_err(|e| format!("write request failed: {}", e))?;
+            offset += log.request.len() as u64;
+            self.files[3]
+                .write_all(&offset.to_le_bytes())
+                .map_err(|e| format!("write offset of request string failed: {}", e))?;
         }
 
         Ok(())

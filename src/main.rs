@@ -17,9 +17,10 @@ use fswriter::FsWriter;
 async fn main() -> std::io::Result<()> {
     let (sender, receiver) = sync_channel::<Log>(100);
 
+    let kilobyte = 1024;
     let handle = thread::spawn(move || {
         let writer = FsWriter::new().expect("create writer failed");
-        let mut engine = Engine::new(120, writer);
+        let mut engine = Engine::new(4 * kilobyte, writer);
 
         for log in receiver {
             let r = engine.insert(log);
