@@ -1,8 +1,8 @@
 mod engine;
-mod fswriter;
+mod fsstore;
 mod log;
 mod rle;
-mod writer;
+mod store;
 
 use ::log::error;
 use actix_web::{error, post, web, App, HttpResponse, HttpServer, Responder};
@@ -11,7 +11,7 @@ use std::thread;
 
 use crate::log::Log;
 use engine::Engine;
-use fswriter::FsWriter;
+use fsstore::FsStore;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -19,8 +19,8 @@ async fn main() -> std::io::Result<()> {
 
     let kilobyte = 1024;
     let handle = thread::spawn(move || {
-        let writer = FsWriter::new().expect("create writer failed");
-        let mut engine = Engine::new(4 * kilobyte, writer);
+        let store = FsStore::new().expect("create store failed");
+        let mut engine = Engine::new(4 * kilobyte, store);
 
         for log in receiver {
             let r = engine.insert(log);

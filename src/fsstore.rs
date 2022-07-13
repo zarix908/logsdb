@@ -5,14 +5,14 @@ use std::io::Write;
 use std::vec::Vec;
 
 use crate::log::Log;
-use crate::writer::Writer;
+use crate::store::Store;
 
-pub struct FsWriter {
+pub struct FsStore {
     files: Vec<File>,
 }
 
-impl FsWriter {
-    pub fn new() -> Result<FsWriter, String> {
+impl FsStore {
+    pub fn new() -> Result<FsStore, String> {
         let mut files = Vec::new();
 
         for i in 0..4 {
@@ -31,11 +31,11 @@ impl FsWriter {
             files.push(file);
         }
 
-        Ok(FsWriter { files })
+        Ok(FsStore { files })
     }
 }
 
-impl Writer for FsWriter {
+impl Store for FsStore {
     fn write(&mut self, memtable: OrderedSkipList<Log>) -> Result<(), String> {
         let mut offset = 0u64;
 
@@ -58,5 +58,13 @@ impl Writer for FsWriter {
         }
 
         Ok(())
+    }
+
+    fn read(self: &Self) -> Result<Log, String> {
+        Ok(Log {
+            timestamp: 1,
+            ip: [1, 1, 1, 1],
+            request: String::from("asdkj"),
+        })
     }
 }
