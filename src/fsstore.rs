@@ -1,10 +1,10 @@
-use skiplist::ordered_skiplist::OrderedSkipList;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::vec::Vec;
 
 use crate::log::Log;
+use crate::memtable::Memtable;
 use crate::store::Store;
 
 pub struct FsStore {
@@ -36,7 +36,7 @@ impl FsStore {
 }
 
 impl Store for FsStore {
-    fn write(&mut self, memtable: OrderedSkipList<Log>) -> Result<(), String> {
+    fn write(&mut self, memtable: Memtable<Log>) -> Result<(), String> {
         let mut offset = 0u64;
 
         for log in memtable {

@@ -1,30 +1,28 @@
-use skiplist::ordered_skiplist::OrderedSkipList;
 use std::mem;
-use std::sync::{Condvar, Mutex};
+use std::ops::DerefMut;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Condvar, Mutex,
+};
 
 use crate::log::Log;
+use crate::memtable::Memtable;
 use crate::store::Store;
 
 pub struct Engine {
-    memtable_is_full: Condvar,
-    engine: Mutex<EngineInternal>,
-    size_limit: u64,
-}
-
-struct EngineInternal {
-    size: u64,
-    memtable: OrderedSkipList<Log>,
+    flush_memtable: Condvar,
+    memtable: Mutex<Memtable<Log>>,
+    memtable_size_limit: u64,
+    stopped: AtomicBool,
 }
 
 impl Engine {
-    pub fn new(size_limit: u64) -> Engine {
+    pub fn new(memtable_size_limit: u64) -> Engine {
         Engine {
-            engine: Mutex::new(EngineInternal {
-                size: 0,
-                memtable: OrderedSkipList::new(),
-            }),
-            size_limit: size_limit,
-            memtable_is_full: Condvar::new(),
+            memtable: Mutex::new(Memtable::new()),
+            memtable_size_limit: memtable_size_limit,
+            flush_memtable: Condvar::new(),
+            stopped: AtomicBool::new(false),
         }
     }
 
@@ -36,37 +34,45 @@ impl Engine {
             if let Err(err) = result {
                 log::error!("dump memtable failed: {}", err);
             }
+
+            if self.stopped.load(Ordering::SeqCst) {
+                break;
+            }
         }
     }
 
     pub fn insert(&self, log: Log) {
         let memtable_size: u64;
 
-        let mut engine = self.engine.lock().unwrap();
-        engine.size += log.size();
-        memtable_size = engine.size;
-        engine.memtable.insert(log);
-        drop(engine);
+        let mut memtable = self.memtable.lock().unwrap();
+        memtable_size = memtable.size();
+        memtable.insert(log);
+        drop(memtable);
 
-        if memtable_size > self.size_limit {
-            self.memtable_is_full.notify_one();
+        if memtable_size > self.memtable_size_limit {
+            self.flush_memtable.notify_one();
         }
     }
 
-    fn swap_memtable(&self) -> OrderedSkipList<Log> {
-        let mut memtable: OrderedSkipList<Log>;
+    pub fn stop(&self) {
+        self.stopped.store(true, Ordering::SeqCst);
+        self.flush_memtable.notify_one();
+    }
 
-        let mut engine = self.engine.lock().unwrap();
+    fn swap_memtable(&self) -> Memtable<Log> {
+        let mut old_memtable: Memtable<Log>;
+
+        let mut memtable = self.memtable.lock().unwrap();
         loop {
-            if engine.size > self.size_limit {
-                memtable = OrderedSkipList::new();
-                mem::swap(&mut engine.memtable, &mut memtable);
+            if memtable.size() > self.memtable_size_limit || self.stopped.load(Ordering::SeqCst) {
+                old_memtable = Memtable::new();
+                mem::swap(memtable.deref_mut(), &mut old_memtable);
                 break;
-            } else {
-                engine = self.memtable_is_full.wait(engine).unwrap();
             }
+
+            memtable = self.flush_memtable.wait(memtable).unwrap();
         }
 
-        return memtable;
+        return old_memtable;
     }
 }

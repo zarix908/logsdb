@@ -2,7 +2,9 @@ mod cursor;
 mod engine;
 mod fsstore;
 mod log;
+mod memtable;
 mod rle;
+mod size;
 mod store;
 
 use actix_web::{error, get, post, web, App, HttpResponse, HttpServer, Responder};
@@ -21,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     let engine = Arc::new(Engine::new(4 * kilobyte));
 
     let engine_clone = Arc::clone(&engine);
-    std::thread::spawn(move || {
+    let handle = std::thread::spawn(move || {
         engine_clone.run(store);
     });
 
@@ -35,6 +37,9 @@ async fn main() -> std::io::Result<()> {
     .bind(("127.0.0.1", 8080))?
     .run()
     .await?;
+
+    engine.stop();
+    handle.join().expect("engine running error");
 
     Ok(())
 }

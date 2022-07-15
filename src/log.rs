@@ -1,17 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::cmp::{Ord, Ordering};
 
+use crate::size::Size;
+
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct Log {
     pub timestamp: u128,
     pub ip: [u8; 4],
     pub request: String,
-}
-
-impl Log {
-    pub fn size(&self) -> u64 {
-        20 + self.request.len() as u64
-    }
 }
 
 impl PartialOrd for Log {
@@ -34,4 +30,11 @@ fn compare_ip(ip1: &[u8; 4], ip2: &[u8; 4]) -> Ordering {
     }
 
     ip1[3].cmp(&ip2[3])
+}
+
+impl Size for Log {
+    fn size(&self) -> u64 {
+        let request_and_ip_size = 20;
+        request_and_ip_size + self.request.len() as u64
+    }
 }
