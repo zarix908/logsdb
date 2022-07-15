@@ -5,10 +5,9 @@ use std::sync::{Condvar, Mutex};
 use crate::log::Log;
 use crate::store::Store;
 
-pub struct Engine<T: Store> {
+pub struct Engine {
     memtable_is_full: Condvar,
     engine: Mutex<EngineInternal>,
-    store: T,
     size_limit: u64,
 }
 
@@ -17,24 +16,23 @@ struct EngineInternal {
     memtable: OrderedSkipList<Log>,
 }
 
-impl<T: Store> Engine<T> {
-    pub fn new(size_limit: u64, store: T) -> Engine<T> {
+impl Engine {
+    pub fn new(size_limit: u64) -> Engine {
         Engine {
             engine: Mutex::new(EngineInternal {
                 size: 0,
                 memtable: OrderedSkipList::new(),
             }),
-            store,
             size_limit: size_limit,
             memtable_is_full: Condvar::new(),
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run<S: Store>(&self, mut store: S) {
         loop {
             let memtable = self.swap_memtable();
 
-            let result = self.store.write(memtable);
+            let result = store.write(memtable);
             if let Err(err) = result {
                 log::error!("dump memtable failed: {}", err);
             }

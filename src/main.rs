@@ -8,6 +8,7 @@ mod store;
 use actix_web::{error, get, post, web, App, HttpResponse, HttpServer, Responder};
 use cursor::Cursor;
 use serde::Deserialize;
+use std::sync::Arc;
 
 use crate::log::Log;
 use engine::Engine;
@@ -17,16 +18,14 @@ use fsstore::FsStore;
 async fn main() -> std::io::Result<()> {
     let kilobyte = 1024;
     let store = FsStore::new().expect("create store failed");
-    let mut engine = Engine::new(4 * kilobyte, store);
+    let engine = Arc::new(Engine::new(4 * kilobyte));
 
-    crossbeam::scope(|s| {
-        s.spawn(|_| {
-            engine.run();
-        });
-    })
-    .unwrap();
+    let engine_clone = Arc::clone(&engine);
+    std::thread::spawn(move || {
+        engine_clone.run(store);
+    });
 
-    let sender_data = web::Data::new(engine);
+    let sender_data = web::Data::new(Arc::clone(&engine));
     HttpServer::new(move || {
         App::new()
             .app_data(sender_data.clone())
@@ -43,7 +42,7 @@ async fn main() -> std::io::Result<()> {
 #[post("/insert")]
 async fn insert(
     log: web::Json<Log>,
-    engine: web::Data<Engine<FsStore>>,
+    engine: web::Data<Arc<Engine>>,
 ) -> Result<impl Responder, error::Error> {
     engine.insert(log.0);
     Ok(HttpResponse::Ok())
