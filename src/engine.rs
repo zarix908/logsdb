@@ -32,7 +32,7 @@ impl Engine {
 
             let result = store.write(memtable);
             if let Err(err) = result {
-                log::error!("dump memtable failed: {}", err);
+                log::error!("flush memtable failed: {}", err);
             }
 
             if self.stopped.load(Ordering::SeqCst) {
