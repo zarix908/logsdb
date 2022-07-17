@@ -3,7 +3,7 @@ use std::cmp::{Ord, Ordering};
 
 use crate::size::Size;
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Ord, Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Log {
     pub timestamp: u128,
     pub ip: [u8; 4],

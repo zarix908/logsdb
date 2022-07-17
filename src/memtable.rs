@@ -1,4 +1,5 @@
-use skiplist::ordered_skiplist::OrderedSkipList;
+use skiplist::ordered_skiplist::{Iter, OrderedSkipList};
+use std::ops::Bound;
 
 use crate::size::Size;
 
@@ -15,13 +16,17 @@ impl<T: PartialOrd + Size> Memtable<T> {
         }
     }
 
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
     pub fn insert(&mut self, item: T) {
         self.size += item.size();
         self.memtable.insert(item);
     }
 
-    pub fn size(&self) -> u64 {
-        self.size
+    pub fn range(&self, min: Bound<&T>, max: Bound<&T>) -> Iter<'_, T> {
+        self.memtable.range(min, max)
     }
 }
 

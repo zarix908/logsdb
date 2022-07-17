@@ -1,20 +1,20 @@
-mod cursor;
 mod engine;
 mod fsstore;
 mod log;
 mod memtable;
+mod range_cursor;
 mod rle;
 mod size;
 mod store;
 
 use actix_web::{error, get, post, web, App, HttpResponse, HttpServer, Responder};
-use cursor::Cursor;
 use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::log::Log;
 use engine::Engine;
 use fsstore::FsStore;
+use range_cursor::{RangeCursor, RangeCursorPointer};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -55,14 +55,36 @@ async fn insert(
 
 #[derive(Deserialize)]
 struct Params {
-    cursor: String,
+    bound: String,
+}
+
+#[derive(Deserialize)]
+enum Bounds {
+    Cursor(RangeCursor<u128, Log>),
+    Query {
+        begin: u128,
+        end: u128,
+        page_size: u64,
+    },
 }
 
 #[get("/read")]
-async fn read(params: web::Query<Params>) -> Result<impl Responder, error::Error> {
-    let cursor_json =
-        base64::decode(params.cursor.clone()).map_err(|e| error::ErrorBadRequest(e))?;
-    let cursor: Cursor = serde_json::from_slice(cursor_json.as_slice())?;
+async fn read(
+    params: web::Query<Params>,
+    engine: web::Data<Arc<Engine>>,
+) -> Result<impl Responder, error::Error> {
+    let bounds_json = base64::decode(&params.bound).map_err(|e| error::ErrorBadRequest(e))?;
+    let bounds: Bounds = serde_json::from_slice(bounds_json.as_slice())?;
 
-    Ok(HttpResponse::Ok())
+    let mut cursor = match bounds {
+        Bounds::Cursor(cursor) => cursor,
+        Bounds::Query {
+            begin,
+            end,
+            page_size,
+        } => RangeCursor::new(begin, end, page_size, RangeCursorPointer::Unset),
+    };
+
+    let logs = engine.read(&mut cursor);
+    Ok(serde_json::to_string(&logs)?)
 }
