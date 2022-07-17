@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::mem;
 use std::ops::{Bound, DerefMut};
 use std::sync::{
