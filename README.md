@@ -1,2 +1,7 @@
 # LogsDB
-simple SSTable database for logs
+
+## Description
+Simple SSTable database for logs.
+
+## Status
+Frozen until 2023.
